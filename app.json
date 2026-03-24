@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "FenderGuard",
+    "slug": "fenderguard",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": false,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0c0f14"
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/icon.png"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.fenderguard.app",
+      "infoPlist": {
+        "UIBackgroundModes": ["bluetooth-central"]
+      }
+    },
+    "plugins": [
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": true,
+          "modes": ["central"],
+          "bluetoothAlwaysPermission": "FenderGuard uses Bluetooth to connect to your skateboard fender."
+        }
+      ]
+    ]
+  }
+}

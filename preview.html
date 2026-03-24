@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FenderGuard · SSR Tech — Browser preview</title>
+  <style>
+    :root {
+      --bg: #0c0f14;
+      --bg-elevated: #141a24;
+      --bg-subtle: #141a24;
+      --bg-well: rgba(0, 0, 0, 0.35);
+      --border: #263042;
+      --text: #e8edf5;
+      --muted: #8b98ad;
+      --accent: #3d9eff;
+      --accent-dim: rgba(61, 158, 255, 0.35);
+      --green: #3ddc97;
+      --red: #ff4d4d;
+      --head-low: #b8d4ff;
+      --head-high: #ffffff;
+      --tail: #ff3b5c;
+      --hazard: #ffb020;
+      --turn: #7cfc8a;
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(1200px 800px at 20% -10%, #1a2744 0%, transparent 55%),
+        radial-gradient(900px 600px at 100% 20%, #132032 0%, transparent 50%),
+        var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      padding: 20px;
+    }
+    .page {
+      max-width: 920px;
+      margin: 0 auto;
+    }
+    .top {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 28px;
+    }
+    .company {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 0;
+    }
+    .company-tag {
+      margin: 2px 0 4px;
+      font-size: 12px;
+      color: var(--muted);
+      opacity: 0.9;
+    }
+    .brand {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin: 0;
+    }
+    h1 {
+      margin: 6px 0 8px;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+    .lead {
+      margin: 0;
+      max-width: 480px;
+      font-size: 15px;
+      line-height: 1.5;
+      color: var(--muted);
+    }
+    .bt-zone {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(0, 0, 0, 0.2);
+      cursor: pointer;
+      align-self: flex-end;
+      font: inherit;
+      color: inherit;
+    }
+    .bt-zone:active { opacity: 0.88; }
+    .bt-ic {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      color: var(--accent);
+      line-height: 1;
+    }
+    .chev { color: var(--muted); font-size: 14px; }
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: rgba(0, 0, 0, 0.55);
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px;
+      max-width: 400px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+    .modal-card h2 { margin: 0 0 6px; font-size: 20px; }
+    .modal-card .sub { color: var(--muted); font-size: 14px; margin: 0 0 12px; }
+    .modal-card .st { font-weight: 600; margin: 0 0 10px; }
+    .modal-card .body { color: var(--muted); font-size: 14px; line-height: 1.5; margin: 0; }
+    .modal-card .btn-row { margin-top: 16px; display: flex; flex-direction: column; gap: 10px; }
+    .modal-card .link {
+      background: none;
+      border: none;
+      color: var(--accent);
+      font-weight: 600;
+      font-size: 15px;
+      cursor: pointer;
+      padding: 8px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .pill.on { background: rgba(61, 220, 151, 0.15); border-color: rgba(61, 220, 151, 0.45); }
+    .pill.off { background: rgba(255, 77, 77, 0.12); border-color: rgba(255, 77, 77, 0.35); }
+    .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .dot.on { background: var(--green); }
+    .dot.off { background: var(--red); }
+    button.btn-main {
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 14px;
+      background: var(--accent);
+      color: #081018;
+      border: 1px solid rgba(61, 158, 255, 0.5);
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(61, 158, 255, 0.25);
+      min-width: 160px;
+    }
+    button.btn-main:disabled { opacity: 0.6; cursor: not-allowed; }
+    .grid { display: grid; gap: 18px; }
+    .card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 18px 16px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+    }
+    .row-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .kicker {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+    .unit-toggle {
+      display: flex;
+      background: var(--bg-well);
+      border-radius: 10px;
+      padding: 3px;
+      border: 1px solid var(--border);
+    }
+    .unit-toggle button {
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .unit-toggle button.active {
+      background: rgba(61, 158, 255, 0.2);
+      color: var(--text);
+      box-shadow: inset 0 0 0 1px var(--accent-dim);
+    }
+    .speed-row {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .speed-val {
+      font-family: ui-monospace, "Cascadia Code", "SF Mono", monospace;
+      font-size: 52px;
+      font-weight: 600;
+      line-height: 1;
+      letter-spacing: -0.03em;
+    }
+    .speed-unit { font-size: 18px; font-weight: 600; color: var(--muted); }
+    .accel-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      font-size: 14px;
+    }
+    .accel-val {
+      font-family: ui-monospace, monospace;
+      font-size: 15px;
+      font-weight: 600;
+    }
+    .board-card { padding-bottom: 20px; }
+    .board-title { font-size: 18px; font-weight: 700; margin: 0 0 8px; }
+    .board-sub {
+      margin: 0 0 14px;
+      font-size: 14px;
+      line-height: 1.45;
+      color: var(--muted);
+      max-width: 520px;
+    }
+    .diagram { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+    .diagram svg { max-width: 100%; height: auto; display: block; }
+    .head-seg {
+      display: flex;
+      gap: 6px;
+      width: 100%;
+      max-width: 356px;
+    }
+    .head-seg button {
+      flex: 1;
+      padding: 10px 0;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      background: var(--bg-well);
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .head-seg button.active {
+      color: var(--text);
+      background: rgba(61, 158, 255, 0.18);
+      border-color: var(--accent-dim);
+    }
+    .head-seg button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .hazard-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 356px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.28);
+      border: 1px solid var(--border);
+    }
+    .hazard-bar button {
+      padding: 8px 18px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 14px;
+      border: 1px solid var(--border);
+      background: #1e2636;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .hazard-bar button.on {
+      color: var(--bg);
+      background: var(--hazard);
+      border-color: rgba(255, 176, 32, 0.5);
+    }
+    .hazard-bar button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 18px;
+      justify-content: center;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .lgd {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    .foot {
+      margin-top: 28px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--muted);
+    }
+    code { font-family: ui-monospace, monospace; font-size: 12px; color: var(--text); }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="top">
+      <div>
+        <p class="company">SSR Tech</p>
+        <p class="company-tag">Skate, Scoot, Ride Technologies</p>
+        <p class="brand">FenderGuard</p>
+        <h1>Rider console</h1>
+        <p class="lead">
+          Static HTML preview — same motion demo as the app mock. Open this file in any browser.
+          Tap Bluetooth (top-right) to connect.
+        </p>
+      </div>
+      <button type="button" class="bt-zone" id="btZone" aria-label="Bluetooth, open connection menu">
+        <span class="bt-ic" aria-hidden="true">BLE</span>
+        <div id="pill" class="pill off" aria-live="polite">
+          <span id="pillDot" class="dot off"></span>
+          <span id="pillText">Disconnected</span>
+        </div>
+        <span class="chev" aria-hidden="true">▼</span>
+      </button>
+    </header>
+
+    <div class="modal-overlay" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" tabindex="-1">
+      <div class="modal-card" onclick="event.stopPropagation()">
+        <h2 id="modalTitle">Bluetooth</h2>
+        <p class="sub">FenderGuard accessory</p>
+        <p class="st" id="modalStatus">Not connected</p>
+        <p class="body">
+          This HTML preview has no real Bluetooth. Use Connect (demo) to run the motion simulator —
+          same logic as <code>src/protocol/mockDevice.ts</code>.
+        </p>
+        <div class="btn-row">
+          <button type="button" class="btn-main" id="connectBtn" style="width:100%">Connect (demo)</button>
+          <button type="button" class="link" id="modalClose">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <main class="grid">
+      <section class="card" aria-label="Speed">
+        <div class="row-top">
+          <span class="kicker">Ground speed</span>
+          <div class="unit-toggle" role="group">
+            <button type="button" id="uMph" class="active">MPH</button>
+            <button type="button" id="uKmh">KM/H</button>
+          </div>
+        </div>
+        <div class="speed-row">
+          <span class="speed-val" id="speedVal">0.0</span>
+          <span class="speed-unit" id="speedUnitLabel">MPH</span>
+        </div>
+        <div class="accel-row">
+          <span style="color:var(--muted)">Accel / decel</span>
+          <span class="accel-val" id="accelVal">+0.00 mph/s</span>
+        </div>
+      </section>
+
+      <section class="card board-card" aria-label="Lights">
+        <h2 class="board-title">Board lights</h2>
+        <p class="board-sub">
+          Two headlamps and two tail lamps (L/R). Hazards flash in sync on both sides. Turn signals
+          and tail follow the demo IMU when hazards are off (<code>src/protocol/mockDevice.ts</code>).
+        </p>
+        <div class="diagram">
+          <svg viewBox="0 0 340 520" width="356" height="545" aria-label="Skateboard top view">
+            <defs>
+              <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="4" result="b" />
+                <feMerge>
+                  <feMergeNode in="b" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+            <line x1="40" y1="122" x2="300" y2="122" stroke="rgba(110,232,255,0.55)" stroke-width="2" stroke-linecap="round" />
+            <line x1="40" y1="398" x2="300" y2="398" stroke="rgba(110,232,255,0.55)" stroke-width="2" stroke-linecap="round" />
+            <g transform="translate(40,122)"><rect x="-6" y="-16" width="12" height="32" rx="4" fill="#5a6578" stroke="#263042" stroke-width="0.75" /></g>
+            <g transform="translate(300,122)"><rect x="-6" y="-16" width="12" height="32" rx="4" fill="#5a6578" stroke="#263042" stroke-width="0.75" /></g>
+            <g transform="translate(40,398)"><rect x="-6" y="-16" width="12" height="32" rx="4" fill="#5a6578" stroke="#263042" stroke-width="0.75" /></g>
+            <g transform="translate(300,398)"><rect x="-6" y="-16" width="12" height="32" rx="4" fill="#5a6578" stroke="#263042" stroke-width="0.75" /></g>
+            <path d="M 120 68 Q 170 44 220 68 C 232 125 228 200 203 256 C 192 295 215 385 220 448 Q 170 468 120 448 C 125 385 148 295 137 256 C 112 200 108 125 120 68 Z" fill="none" stroke="rgba(110,232,255,0.45)" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" />
+            <path d="M 120 68 Q 170 44 220 68 C 232 125 228 200 203 256 C 192 295 215 385 220 448 Q 170 468 120 448 C 125 385 148 295 137 256 C 112 200 108 125 120 68 Z" fill="none" stroke="#6ee8ff" stroke-width="1.75" stroke-linejoin="round" stroke-linecap="round" />
+            <line x1="170" y1="76" x2="170" y2="444" stroke="rgba(110,232,255,0.45)" stroke-width="1" stroke-dasharray="4 6" />
+            <text x="170" y="268" text-anchor="middle" fill="rgba(139,152,173,0.35)" font-size="12" font-weight="600">TOP VIEW</text>
+            <g id="lampHead"></g>
+            <g id="cornerFL"></g>
+            <g id="cornerFR"></g>
+            <g id="cornerRL"></g>
+            <g id="cornerRR"></g>
+            <text x="26" y="144" text-anchor="middle" fill="#e8edf5" font-size="9" font-weight="700" opacity="0.85">L</text>
+            <text x="314" y="144" text-anchor="middle" fill="#e8edf5" font-size="9" font-weight="700" opacity="0.85">R</text>
+            <text x="26" y="420" text-anchor="middle" fill="#e8edf5" font-size="9" font-weight="700" opacity="0.85">L</text>
+            <text x="314" y="420" text-anchor="middle" fill="#e8edf5" font-size="9" font-weight="700" opacity="0.85">R</text>
+            <g id="lampTail"></g>
+            <text x="46" y="238" fill="#8b98ad" font-size="11" font-weight="600" transform="rotate(-90 46 238)">LEFT</text>
+            <text x="294" y="294" fill="#8b98ad" font-size="11" font-weight="600" transform="rotate(90 294 294)">RIGHT</text>
+          </svg>
+          <div class="head-seg">
+            <button type="button" data-head="off" disabled>Off</button>
+            <button type="button" data-head="low" disabled>Low</button>
+            <button type="button" data-head="high" disabled>High</button>
+          </div>
+          <div class="hazard-bar">
+            <span style="font-weight:600;color:var(--muted)">Hazard lights</span>
+            <button type="button" id="hazardBtn" disabled>Off</button>
+          </div>
+          <div class="legend">
+            <span><i class="lgd" style="background:var(--head-low)"></i> Head ×2 (you)</span>
+            <span><i class="lgd" style="background:var(--turn)"></i> Turn (IMU)</span>
+            <span><i class="lgd" style="background:var(--tail)"></i> Tail ×2 (decel)</span>
+            <span><i class="lgd" style="background:var(--hazard)"></i> Hazard (you)</span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <p>
+        © SSR Tech · FenderGuard. Production app: Expo + iOS. Protocol UUIDs in
+        <code>src/protocol/types.ts</code>.
+      </p>
+    </footer>
+  </div>
+
+  <script>
+    (function () {
+      const TURN_LAT = 2.2;
+      const TAIL_DECEL = -1.8;
+      const HAZARD_MS = 450;
+
+      const state = {
+        connected: false,
+        unit: "mph",
+        head: "off",
+        hazards: false,
+        speedMs: 0,
+        along: 0,
+        lat: 0,
+        tail: false,
+        fl: false,
+        fr: false,
+        rl: false,
+        rr: false,
+        t0: 0,
+        raf: 0,
+      };
+
+      function clamp(n, lo, hi) {
+        return Math.max(lo, Math.min(hi, n));
+      }
+
+      function msToMph(ms) {
+        return ms * 2.2369362921;
+      }
+      function msToKmh(ms) {
+        return ms * 3.6;
+      }
+      function accelRate(accelMs2, unit) {
+        return unit === "mph" ? accelMs2 * 2.2369362921 : accelMs2 * 3.6;
+      }
+
+      function hazardPhaseNow() {
+        return Math.floor(performance.now() / HAZARD_MS) % 2 === 0;
+      }
+
+      const el = (id) => document.getElementById(id);
+      const pill = el("pill");
+      const pillDot = el("pillDot");
+      const pillText = el("pillText");
+      const connectBtn = el("connectBtn");
+      const modal = el("modal");
+      const modalStatus = el("modalStatus");
+      const btZone = el("btZone");
+      const speedVal = el("speedVal");
+      const speedUnitLabel = el("speedUnitLabel");
+      const accelVal = el("accelVal");
+      const uMph = el("uMph");
+      const uKmh = el("uKmh");
+      const hazardBtn = el("hazardBtn");
+      const headBtns = document.querySelectorAll(".head-seg button");
+
+      function openModal() {
+        modal.classList.add("open");
+      }
+      function closeModal() {
+        modal.classList.remove("open");
+      }
+
+      function setConnected(c) {
+        state.connected = c;
+        pill.className = "pill " + (c ? "on" : "off");
+        pillDot.className = "dot " + (c ? "on" : "off");
+        pillText.textContent = c ? "Connected" : "Disconnected";
+        connectBtn.textContent = c ? "Disconnect" : "Connect (demo)";
+        modalStatus.textContent = c ? "Connected (demo)" : "Not connected";
+        headBtns.forEach((b) => (b.disabled = !c));
+        hazardBtn.disabled = !c;
+      }
+
+      function fmt(n, d) {
+        return Number.isFinite(n) ? n.toFixed(d) : "—";
+      }
+
+      function renderReadout() {
+        const spd = state.unit === "mph" ? msToMph(state.speedMs) : msToKmh(state.speedMs);
+        const rate = accelRate(state.along, state.unit);
+        speedVal.textContent = fmt(spd, 1);
+        speedUnitLabel.textContent = state.unit === "mph" ? "MPH" : "KM/H";
+        accelVal.textContent = (rate >= 0 ? "+" : "") + fmt(rate, 2) + " " + (state.unit === "mph" ? "mph/s" : "km/h/s");
+        accelVal.style.color = rate >= 0 ? "var(--green)" : "var(--red)";
+      }
+
+      function drawHeadPair() {
+        const g = el("lampHead");
+        const on = state.head !== "off";
+        const fill = state.head === "high" ? "#ffffff" : state.head === "low" ? "#b8d4ff" : "#2a3345";
+        const op = on ? 1 : 0.4;
+        function bulb(cx) {
+          return (
+            '<circle cx="' +
+            cx +
+            '" cy="58" r="20" fill="' +
+            fill +
+            '" opacity="' +
+            (on ? 0.25 : 0.12) +
+            '"/>' +
+            '<circle cx="' +
+            cx +
+            '" cy="58" r="12" fill="' +
+            fill +
+            '" opacity="' +
+            op +
+            '" stroke="var(--accent-dim)" stroke-width="2" filter="' +
+            (on ? "url(#glow)" : "none") +
+            '"/>'
+          );
+        }
+        g.innerHTML =
+          '<text x="170" y="38" text-anchor="middle" fill="#8b98ad" font-size="11" font-weight="600">Headlights (L / R)</text>' +
+          bulb(128) +
+          bulb(212);
+      }
+
+      function drawCorner(id, cx, cy, turnOn, hazardOn) {
+        const g = el(id);
+        let fill, op;
+        if (hazardOn) {
+          const ph = hazardPhaseNow();
+          fill = "#ffb020";
+          op = ph ? 1 : 0.22;
+        } else {
+          fill = turnOn ? "#7cfc8a" : "#2a3345";
+          op = turnOn ? 1 : 0.35;
+        }
+        const glow = op > 0.5 ? "url(#glow)" : "none";
+        g.innerHTML =
+          '<circle cx="' +
+          cx +
+          '" cy="' +
+          cy +
+          '" r="18" fill="' +
+          fill +
+          '" opacity="' +
+          op * 0.35 +
+          '"/>' +
+          '<circle cx="' +
+          cx +
+          '" cy="' +
+          cy +
+          '" r="11" fill="' +
+          fill +
+          '" opacity="' +
+          op +
+          '" stroke="#3d465a" stroke-width="1" filter="' +
+          glow +
+          '"/>';
+      }
+
+      function drawTailPair() {
+        const g = el("lampTail");
+        const on = state.hazards ? hazardPhaseNow() : state.tail;
+        const fill = "#ff3b5c";
+        const op = on ? 1 : 0.35;
+        function b(cx) {
+          return (
+            '<circle cx="' +
+            cx +
+            '" cy="452" r="20" fill="' +
+            fill +
+            '" opacity="' +
+            (on ? 0.25 : 0.12) +
+            '"/>' +
+            '<circle cx="' +
+            cx +
+            '" cy="452" r="12" fill="' +
+            fill +
+            '" opacity="' +
+            op +
+            '" stroke="#3d465a" stroke-width="1" filter="' +
+            (on ? "url(#glow)" : "none") +
+            '"/>'
+          );
+        }
+        g.innerHTML =
+          '<text x="170" y="418" text-anchor="middle" fill="#8b98ad" font-size="11" font-weight="600">Tail lights (L / R)</text>' +
+          b(128) +
+          b(212);
+      }
+
+      function renderLights() {
+        drawHeadPair();
+        drawCorner("cornerFL", 26, 122, state.fl, state.hazards);
+        drawCorner("cornerFR", 314, 122, state.fr, state.hazards);
+        drawCorner("cornerRL", 26, 398, state.rl, state.hazards);
+        drawCorner("cornerRR", 314, 398, state.rr, state.hazards);
+        drawTailPair();
+        headBtns.forEach((b) => {
+          b.classList.toggle("active", b.getAttribute("data-head") === state.head);
+        });
+        hazardBtn.textContent = state.hazards ? "On" : "Off";
+        hazardBtn.classList.toggle("on", state.hazards);
+      }
+
+      function tick() {
+        if (!state.connected) return;
+        const t = (performance.now() - state.t0) / 1000;
+        const along =
+          3 * Math.sin(t * 0.7) +
+          2.2 * Math.sin(t * 1.9 + 0.4) +
+          (Math.sin(t * 3.1) > 0.85 ? -4 : 0);
+        const lateral = 3.8 * Math.sin(t * 1.1 + 0.2) + 1.4 * Math.sin(t * 2.4 + 1.1);
+
+        const dt = 1 / 60;
+        state.speedMs = clamp(state.speedMs + along * dt, 0, 28);
+        state.along = along * 0.85 + state.along * 0.15;
+        state.lat = lateral * 0.82 + state.lat * 0.18;
+
+        if (!state.hazards) {
+          const left = state.lat <= -TURN_LAT;
+          const right = state.lat >= TURN_LAT;
+          state.fl = state.rl = left;
+          state.fr = state.rr = right;
+          state.tail = state.along <= TAIL_DECEL;
+        }
+
+        renderReadout();
+        renderLights();
+        state.raf = requestAnimationFrame(tick);
+      }
+
+      btZone.addEventListener("click", openModal);
+      el("modalClose").addEventListener("click", closeModal);
+      modal.addEventListener("click", (e) => {
+        if (e.target === modal) closeModal();
+      });
+
+      connectBtn.addEventListener("click", () => {
+        if (state.connected) {
+          cancelAnimationFrame(state.raf);
+          setConnected(false);
+          renderReadout();
+          renderLights();
+          closeModal();
+        } else {
+          state.t0 = performance.now();
+          setConnected(true);
+          renderLights();
+          tick();
+          closeModal();
+        }
+      });
+
+      uMph.addEventListener("click", () => {
+        state.unit = "mph";
+        uMph.classList.add("active");
+        uKmh.classList.remove("active");
+        renderReadout();
+      });
+      uKmh.addEventListener("click", () => {
+        state.unit = "kmh";
+        uKmh.classList.add("active");
+        uMph.classList.remove("active");
+        renderReadout();
+      });
+
+      headBtns.forEach((b) => {
+        b.addEventListener("click", () => {
+          state.head = b.getAttribute("data-head");
+          renderLights();
+        });
+      });
+
+      hazardBtn.addEventListener("click", () => {
+        state.hazards = !state.hazards;
+        renderLights();
+      });
+
+      setConnected(false);
+      renderReadout();
+      renderLights();
+    })();
+  </script>
+</body>
+</html>
