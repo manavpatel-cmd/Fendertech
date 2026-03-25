@@ -38,6 +38,8 @@ export default function App() {
     setSpeedUnit,
     speedDisplay,
     accelRateDisplay,
+    averageSpeedDisplay,
+    showAverageColumn,
   } = useFender(transport);
   const [busy, setBusy] = useState(false);
   const [btMenuOpen, setBtMenuOpen] = useState(false);
@@ -197,6 +199,8 @@ export default function App() {
               accelRate={accelRateDisplay}
               unit={speedUnit}
               onUnitChange={setSpeedUnit}
+              showAverageColumn={showAverageColumn}
+              averageSpeed={averageSpeedDisplay}
             />
             <SkateboardDiagram
               lights={lights}

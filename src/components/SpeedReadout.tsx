@@ -7,6 +7,10 @@ type Props = {
   accelRate: number;
   unit: SpeedUnit;
   onUnitChange: (u: SpeedUnit) => void;
+  /** Shown when disconnected, or when connected and speed has been ~0 for more than 5 minutes. */
+  showAverageColumn?: boolean;
+  /** Session average in current unit; null if no samples yet. */
+  averageSpeed: number | null;
 };
 
 function fmt(n: number, digits: number): string {
@@ -14,7 +18,14 @@ function fmt(n: number, digits: number): string {
   return n.toFixed(digits);
 }
 
-export function SpeedReadout({ speed, accelRate, unit, onUnitChange }: Props) {
+export function SpeedReadout({
+  speed,
+  accelRate,
+  unit,
+  onUnitChange,
+  showAverageColumn = false,
+  averageSpeed,
+}: Props) {
   const unitLabel = unit === "mph" ? "MPH" : "KM/H";
   const rateLabel = unit === "mph" ? "mph/s" : "km/h/s";
 
@@ -41,9 +52,24 @@ export function SpeedReadout({ speed, accelRate, unit, onUnitChange }: Props) {
           </Pressable>
         </View>
       </View>
-      <View style={styles.speedRow}>
-        <Text style={styles.speedValue}>{fmt(speed, 1)}</Text>
-        <Text style={styles.speedUnit}>{unitLabel}</Text>
+      <View style={styles.speedColumns}>
+        <View style={styles.speedColPrimary}>
+          <View style={styles.speedRow}>
+            <Text style={styles.speedValue}>{fmt(speed, 1)}</Text>
+            <Text style={styles.speedUnit}>{unitLabel}</Text>
+          </View>
+        </View>
+        {showAverageColumn && (
+          <View style={styles.speedColAvg} accessibilityLabel="Average speed">
+            <Text style={styles.avgKicker}>Average speed</Text>
+            <View style={styles.avgValueRow}>
+              <Text style={styles.avgValue}>
+                {averageSpeed === null ? "—" : fmt(averageSpeed, 1)}
+              </Text>
+              <Text style={styles.avgUnit}>{unitLabel}</Text>
+            </View>
+          </View>
+        )}
       </View>
       <View style={styles.accelRow}>
         <Text style={styles.accelLabel}>Accel / decel</Text>
@@ -111,11 +137,54 @@ const styles = StyleSheet.create({
   unitBtnTextOn: {
     color: C.text,
   },
+  speedColumns: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    gap: 14,
+    marginBottom: 14,
+  },
+  speedColPrimary: {
+    flex: 1,
+    minWidth: 0,
+  },
+  speedColAvg: {
+    flex: 1,
+    minWidth: 0,
+    borderLeftWidth: 1,
+    borderLeftColor: C.border,
+    paddingLeft: 14,
+    justifyContent: "center",
+  },
+  avgKicker: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: C.muted,
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
+    marginBottom: 4,
+  },
+  avgValueRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 8,
+  },
+  avgValue: {
+    fontSize: 36,
+    fontWeight: "600",
+    lineHeight: 40,
+    color: C.text,
+    letterSpacing: -0.5,
+    fontVariant: ["tabular-nums"],
+  },
+  avgUnit: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: C.muted,
+  },
   speedRow: {
     flexDirection: "row",
     alignItems: "baseline",
     gap: 10,
-    marginBottom: 14,
   },
   speedValue: {
     fontSize: 52,

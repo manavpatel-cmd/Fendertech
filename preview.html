@@ -205,11 +205,54 @@
       color: var(--text);
       box-shadow: inset 0 0 0 1px var(--accent-dim);
     }
+    .speed-columns {
+      display: flex;
+      flex-direction: row;
+      align-items: stretch;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    .speed-col-primary {
+      flex: 1;
+      min-width: 0;
+    }
+    .speed-col-avg {
+      display: none;
+      flex: 1;
+      min-width: 0;
+      border-left: 1px solid var(--border);
+      padding-left: 14px;
+      justify-content: center;
+      flex-direction: column;
+    }
+    .speed-columns.show-avg .speed-col-avg {
+      display: flex;
+    }
+    .avg-kicker {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .avg-value-row {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .avg-val {
+      font-family: ui-monospace, "Cascadia Code", "SF Mono", monospace;
+      font-size: 36px;
+      font-weight: 600;
+      line-height: 1;
+      letter-spacing: -0.03em;
+    }
+    .avg-unit { font-size: 15px; font-weight: 600; color: var(--muted); }
     .speed-row {
       display: flex;
       align-items: baseline;
       gap: 10px;
-      margin-bottom: 14px;
     }
     .speed-val {
       font-family: ui-monospace, "Cascadia Code", "SF Mono", monospace;
@@ -366,9 +409,20 @@
             <button type="button" id="uKmh">KM/H</button>
           </div>
         </div>
-        <div class="speed-row">
-          <span class="speed-val" id="speedVal">0.0</span>
-          <span class="speed-unit" id="speedUnitLabel">MPH</span>
+        <div class="speed-columns show-avg" id="speedColumns">
+          <div class="speed-col-primary">
+            <div class="speed-row">
+              <span class="speed-val" id="speedVal">0.0</span>
+              <span class="speed-unit" id="speedUnitLabel">MPH</span>
+            </div>
+          </div>
+          <div class="speed-col-avg" id="avgCol" aria-label="Average speed">
+            <span class="avg-kicker">Average speed</span>
+            <div class="avg-value-row">
+              <span class="avg-val" id="avgVal">—</span>
+              <span class="avg-unit" id="avgUnitLabel">MPH</span>
+            </div>
+          </div>
         </div>
         <div class="accel-row">
           <span style="color:var(--muted)">Accel / decel</span>
@@ -449,6 +503,9 @@
       const TAIL_DECEL = -1.8;
       const HAZARD_MS = 450;
 
+      const NEAR_ZERO_MS = 0.05;
+      const IDLE_MS = 5 * 60 * 1000;
+
       const state = {
         connected: false,
         unit: "mph",
@@ -464,6 +521,11 @@
         rr: false,
         t0: 0,
         raf: 0,
+        sumMs: 0,
+        count: 0,
+        lastSessionAvgMs: null,
+        zeroSince: null,
+        stationaryLong: false,
       };
 
       function clamp(n, lo, hi) {
@@ -494,6 +556,9 @@
       const btZone = el("btZone");
       const speedVal = el("speedVal");
       const speedUnitLabel = el("speedUnitLabel");
+      const speedColumns = el("speedColumns");
+      const avgVal = el("avgVal");
+      const avgUnitLabel = el("avgUnitLabel");
       const accelVal = el("accelVal");
       const uMph = el("uMph");
       const uKmh = el("uKmh");
@@ -526,9 +591,24 @@
         const spd = state.unit === "mph" ? msToMph(state.speedMs) : msToKmh(state.speedMs);
         const rate = accelRate(state.along, state.unit);
         speedVal.textContent = fmt(spd, 1);
-        speedUnitLabel.textContent = state.unit === "mph" ? "MPH" : "KM/H";
+        const ulabel = state.unit === "mph" ? "MPH" : "KM/H";
+        speedUnitLabel.textContent = ulabel;
         accelVal.textContent = (rate >= 0 ? "+" : "") + fmt(rate, 2) + " " + (state.unit === "mph" ? "mph/s" : "km/h/s");
         accelVal.style.color = rate >= 0 ? "var(--green)" : "var(--red)";
+
+        const showAvg = !state.connected || state.stationaryLong;
+        speedColumns.classList.toggle("show-avg", showAvg);
+
+        let avgMs = null;
+        if (state.connected && state.stationaryLong) {
+          avgMs = state.count > 0 ? state.sumMs / state.count : null;
+        } else if (!state.connected) {
+          avgMs = state.lastSessionAvgMs;
+        }
+        const avgSpd =
+          avgMs === null ? null : state.unit === "mph" ? msToMph(avgMs) : msToKmh(avgMs);
+        avgVal.textContent = avgSpd === null ? "—" : fmt(avgSpd, 1);
+        avgUnitLabel.textContent = ulabel;
       }
 
       function drawHeadPair() {
@@ -656,6 +736,14 @@
         state.along = along * 0.85 + state.along * 0.15;
         state.lat = lateral * 0.82 + state.lat * 0.18;
 
+        state.sumMs += state.speedMs;
+        state.count += 1;
+        if (state.speedMs < NEAR_ZERO_MS) {
+          if (state.zeroSince === null) state.zeroSince = performance.now();
+        } else {
+          state.zeroSince = null;
+        }
+
         if (!state.hazards) {
           const left = state.lat <= -TURN_LAT;
           const right = state.lat >= TURN_LAT;
@@ -669,6 +757,16 @@
         state.raf = requestAnimationFrame(tick);
       }
 
+      setInterval(function () {
+        if (!state.connected) {
+          state.stationaryLong = false;
+          return;
+        }
+        const z = state.zeroSince;
+        state.stationaryLong = z !== null && performance.now() - z >= IDLE_MS;
+        renderReadout();
+      }, 1000);
+
       btZone.addEventListener("click", openModal);
       el("modalClose").addEventListener("click", closeModal);
       modal.addEventListener("click", (e) => {
@@ -678,12 +776,19 @@
       connectBtn.addEventListener("click", () => {
         if (state.connected) {
           cancelAnimationFrame(state.raf);
+          if (state.count > 0) {
+            state.lastSessionAvgMs = state.sumMs / state.count;
+          }
           setConnected(false);
           renderReadout();
           renderLights();
           closeModal();
         } else {
           state.t0 = performance.now();
+          state.sumMs = 0;
+          state.count = 0;
+          state.zeroSince = null;
+          state.stationaryLong = false;
           setConnected(true);
           renderLights();
           tick();
