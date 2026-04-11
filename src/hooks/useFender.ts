@@ -48,11 +48,13 @@ export function useFender(transport?: FenderDeviceTransport) {
   });
   const [speedUnit, setSpeedUnitState] = useState<SpeedUnit>("mph");
   const [lastSessionAvgMs, setLastSessionAvgMs] = useState<number | null>(null);
+  const [lastSessionTopMs, setLastSessionTopMs] = useState<number | null>(null);
   const [stationaryLongConnected, setStationaryLongConnected] = useState(false);
   const [manualTurn, setManualTurnState] = useState<ManualTurn>("off");
 
   const sumMsRef = useRef(0);
   const countRef = useRef(0);
+  const maxSpeedMsRef = useRef(0);
   const zeroSinceRef = useRef<number | null>(null);
   const prevConnectedRef = useRef(false);
 
@@ -88,6 +90,9 @@ export function useFender(transport?: FenderDeviceTransport) {
       if (nowConnected) {
         sumMsRef.current += t.speedMs;
         countRef.current += 1;
+        if (t.speedMs > maxSpeedMsRef.current) {
+          maxSpeedMsRef.current = t.speedMs;
+        }
         if (t.speedMs < NEAR_ZERO_MS) {
           if (zeroSinceRef.current === null) {
             zeroSinceRef.current = Date.now();
@@ -105,11 +110,13 @@ export function useFender(transport?: FenderDeviceTransport) {
     if (prevConnectedRef.current && !c) {
       if (countRef.current > 0) {
         setLastSessionAvgMs(sumMsRef.current / countRef.current);
+        setLastSessionTopMs(maxSpeedMsRef.current);
       }
     }
     if (!prevConnectedRef.current && c) {
       sumMsRef.current = 0;
       countRef.current = 0;
+      maxSpeedMsRef.current = 0;
       zeroSinceRef.current = null;
       setStationaryLongConnected(false);
     }
@@ -194,6 +201,23 @@ export function useFender(transport?: FenderDeviceTransport) {
 
   const showAverageColumn = !connected || stationaryLongConnected;
 
+  const topSpeedDisplay = useMemo(() => {
+    let topMs: number | null = null;
+    if (connected && stationaryLongConnected) {
+      topMs = maxSpeedMsRef.current;
+    } else if (!connected) {
+      topMs = lastSessionTopMs;
+    }
+    if (topMs === null) return null;
+    return speedUnit === "mph" ? msToMph(topMs) : msToKmh(topMs);
+  }, [
+    connected,
+    stationaryLongConnected,
+    lastSessionTopMs,
+    speedUnit,
+    telem.timestampMs,
+  ]);
+
   return {
     connected,
     connect,
@@ -208,6 +232,7 @@ export function useFender(transport?: FenderDeviceTransport) {
     speedDisplay,
     accelRateDisplay,
     averageSpeedDisplay,
+    topSpeedDisplay,
     showAverageColumn,
   };
 }

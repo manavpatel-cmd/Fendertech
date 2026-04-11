@@ -264,6 +264,7 @@ function AppShell({ themePreference, onCycleTheme }: AppShellProps) {
     speedDisplay,
     accelRateDisplay,
     averageSpeedDisplay,
+    topSpeedDisplay,
     showAverageColumn,
   } = useFender(transport);
   const [busy, setBusy] = useState(false);
@@ -519,6 +520,7 @@ function AppShell({ themePreference, onCycleTheme }: AppShellProps) {
               onUnitChange={setSpeedUnit}
               showAverageColumn={showAverageColumn}
               averageSpeed={averageSpeedDisplay}
+              topSpeed={topSpeedDisplay}
             />
             <SkateboardDiagram
               lights={lights}

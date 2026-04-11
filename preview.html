@@ -319,7 +319,7 @@
     }
     .speed-col-avg {
       display: none;
-      flex: 1;
+      flex: 1.15;
       min-width: 0;
       border-left: 1px solid var(--border);
       padding-left: 14px;
@@ -328,6 +328,21 @@
     }
     .speed-columns.show-avg .speed-col-avg {
       display: flex;
+    }
+    .speed-stat-pair {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      gap: 12px;
+      width: 100%;
+    }
+    .speed-stat-cell {
+      flex: 1;
+      min-width: 0;
+    }
+    .speed-stat-divider {
+      border-left: 1px solid var(--border);
+      padding-left: 12px;
     }
     .avg-kicker {
       font-size: 11px;
@@ -560,11 +575,22 @@
               </div>
             </div>
           </div>
-          <div class="speed-col-avg" id="avgCol" aria-label="Average speed">
-            <span class="avg-kicker">Average speed</span>
-            <div class="avg-value-row">
-              <span class="avg-val" id="avgVal">—</span>
-              <span class="avg-unit" id="avgUnitLabel">MPH</span>
+          <div class="speed-col-avg" id="avgCol" aria-label="Average and top speed">
+            <div class="speed-stat-pair">
+              <div class="speed-stat-cell" aria-label="Average speed">
+                <span class="avg-kicker">Average speed</span>
+                <div class="avg-value-row">
+                  <span class="avg-val" id="avgVal">—</span>
+                  <span class="avg-unit" id="avgUnitLabel">MPH</span>
+                </div>
+              </div>
+              <div class="speed-stat-cell speed-stat-divider" aria-label="Top speed">
+                <span class="avg-kicker">Top speed</span>
+                <div class="avg-value-row">
+                  <span class="avg-val" id="topVal">—</span>
+                  <span class="avg-unit" id="topUnitLabel">MPH</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -676,7 +702,9 @@
         raf: 0,
         sumMs: 0,
         count: 0,
+        maxSpeedMs: 0,
         lastSessionAvgMs: null,
+        lastSessionTopMs: null,
         zeroSince: null,
         stationaryLong: false,
         manualTurn: "off",
@@ -713,6 +741,8 @@
       const speedColumns = el("speedColumns");
       const avgVal = el("avgVal");
       const avgUnitLabel = el("avgUnitLabel");
+      const topVal = el("topVal");
+      const topUnitLabel = el("topUnitLabel");
       const accelVal = el("accelVal");
       const uMph = el("uMph");
       const uKmh = el("uKmh");
@@ -924,6 +954,17 @@
           avgMs === null ? null : state.unit === "mph" ? msToMph(avgMs) : msToKmh(avgMs);
         avgVal.textContent = avgSpd === null ? "—" : fmt(avgSpd, 1);
         avgUnitLabel.textContent = ulabel;
+
+        let topMs = null;
+        if (state.connected && state.stationaryLong) {
+          topMs = state.maxSpeedMs;
+        } else if (!state.connected) {
+          topMs = state.lastSessionTopMs;
+        }
+        const topSpd =
+          topMs === null ? null : state.unit === "mph" ? msToMph(topMs) : msToKmh(topMs);
+        topVal.textContent = topSpd === null ? "—" : fmt(topSpd, 1);
+        topUnitLabel.textContent = ulabel;
       }
 
       function drawHeadPair() {
@@ -1062,6 +1103,7 @@
 
         state.sumMs += state.speedMs;
         state.count += 1;
+        if (state.speedMs > state.maxSpeedMs) state.maxSpeedMs = state.speedMs;
         if (state.speedMs < NEAR_ZERO_MS) {
           if (state.zeroSince === null) state.zeroSince = performance.now();
         } else {
@@ -1112,6 +1154,7 @@
           cancelAnimationFrame(state.raf);
           if (state.count > 0) {
             state.lastSessionAvgMs = state.sumMs / state.count;
+            state.lastSessionTopMs = state.maxSpeedMs;
           }
           setConnected(false);
           renderReadout();
@@ -1121,6 +1164,7 @@
           state.t0 = performance.now();
           state.sumMs = 0;
           state.count = 0;
+          state.maxSpeedMs = 0;
           state.zeroSince = null;
           state.stationaryLong = false;
           setConnected(true);

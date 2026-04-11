@@ -78,6 +78,7 @@ type Props = {
   onUnitChange: (u: SpeedUnit) => void;
   showAverageColumn?: boolean;
   averageSpeed: number | null;
+  topSpeed: number | null;
 };
 
 function fmt(n: number, digits: number): string {
@@ -289,13 +290,27 @@ function createStyles(C: AppTheme) {
       minWidth: 0,
     },
     speedColAvg: {
-      flex: 1,
+      flex: 1.15,
       minWidth: 0,
       borderLeftWidth: 1,
       borderLeftColor: C.border,
       paddingLeft: 14,
       justifyContent: "center",
       paddingTop: 24,
+    },
+    speedStatPair: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 12,
+    },
+    speedStatCell: {
+      flex: 1,
+      minWidth: 0,
+    },
+    speedStatDivider: {
+      borderLeftWidth: 1,
+      borderLeftColor: C.border,
+      paddingLeft: 12,
     },
     avgKicker: {
       fontSize: 11,
@@ -350,6 +365,7 @@ export function SpeedReadout({
   onUnitChange,
   showAverageColumn = false,
   averageSpeed,
+  topSpeed,
 }: Props) {
   const C = useAppTheme();
   const styles = useMemo(() => createStyles(C), [C]);
@@ -417,18 +433,41 @@ export function SpeedReadout({
         {showAverageColumn && (
           <View
             style={styles.speedColAvg}
-            accessibilityLabel="Average speed"
+            accessibilityLabel="Average and top speed"
           >
-            <Text style={styles.avgKicker} maxFontSizeMultiplier={FONT_MAX}>
-              Average speed
-            </Text>
-            <View style={styles.avgValueRow}>
-              <Text style={styles.avgValue} maxFontSizeMultiplier={FONT_MAX}>
-                {averageSpeed === null ? "—" : fmt(averageSpeed, 1)}
-              </Text>
-              <Text style={styles.avgUnit} maxFontSizeMultiplier={FONT_MAX}>
-                {unitLabel}
-              </Text>
+            <View style={styles.speedStatPair}>
+              <View
+                style={styles.speedStatCell}
+                accessibilityLabel="Average speed"
+              >
+                <Text style={styles.avgKicker} maxFontSizeMultiplier={FONT_MAX}>
+                  Average speed
+                </Text>
+                <View style={styles.avgValueRow}>
+                  <Text style={styles.avgValue} maxFontSizeMultiplier={FONT_MAX}>
+                    {averageSpeed === null ? "—" : fmt(averageSpeed, 1)}
+                  </Text>
+                  <Text style={styles.avgUnit} maxFontSizeMultiplier={FONT_MAX}>
+                    {unitLabel}
+                  </Text>
+                </View>
+              </View>
+              <View
+                style={[styles.speedStatCell, styles.speedStatDivider]}
+                accessibilityLabel="Top speed"
+              >
+                <Text style={styles.avgKicker} maxFontSizeMultiplier={FONT_MAX}>
+                  Top speed
+                </Text>
+                <View style={styles.avgValueRow}>
+                  <Text style={styles.avgValue} maxFontSizeMultiplier={FONT_MAX}>
+                    {topSpeed === null ? "—" : fmt(topSpeed, 1)}
+                  </Text>
+                  <Text style={styles.avgUnit} maxFontSizeMultiplier={FONT_MAX}>
+                    {unitLabel}
+                  </Text>
+                </View>
+              </View>
             </View>
           </View>
         )}
