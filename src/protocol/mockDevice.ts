@@ -16,7 +16,11 @@ function clamp(n: number, lo: number, hi: number): number {
 export class MockFenderDevice implements FenderDeviceTransport {
   private listeners = new Set<FenderDeviceListener>();
   private raf = 0;
-  private cmd: FenderLightsCommand = { headlightMode: "off", hazardsOn: false };
+  private cmd: FenderLightsCommand = {
+    headlightMode: "off",
+    hazardsOn: false,
+    manualTurn: "off",
+  };
   private status: FenderLightsStatus = {
     headlightMode: "off",
     hazardsOn: false,
@@ -58,7 +62,10 @@ export class MockFenderDevice implements FenderDeviceTransport {
   }
 
   async setCommand(cmd: FenderLightsCommand): Promise<void> {
-    this.cmd = { ...cmd };
+    this.cmd = {
+      ...cmd,
+      manualTurn: cmd.manualTurn ?? "off",
+    };
     this.applyCommandToStatus();
     this.emit();
   }
@@ -114,6 +121,18 @@ export class MockFenderDevice implements FenderDeviceTransport {
       this.status.turnRearLeft = on;
       this.status.turnRearRight = on;
       this.status.tailOn = on;
+    } else if (this.cmd.manualTurn === "left") {
+      this.status.turnFrontLeft = true;
+      this.status.turnRearLeft = true;
+      this.status.turnFrontRight = false;
+      this.status.turnRearRight = false;
+      this.status.tailOn = smoothedAlong <= TAIL_DECEL_THRESHOLD;
+    } else if (this.cmd.manualTurn === "right") {
+      this.status.turnFrontLeft = false;
+      this.status.turnRearLeft = false;
+      this.status.turnFrontRight = true;
+      this.status.turnRearRight = true;
+      this.status.tailOn = smoothedAlong <= TAIL_DECEL_THRESHOLD;
     } else {
       const left = smoothedLat <= -TURN_LAT_THRESHOLD;
       const right = smoothedLat >= TURN_LAT_THRESHOLD;

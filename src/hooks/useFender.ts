@@ -1,9 +1,11 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FenderDeviceTransport } from "../protocol/device";
 import type {
   FenderLightsCommand,
   FenderLightsStatus,
   FenderTelemetry,
+  ManualTurn,
 } from "../protocol/types";
 import { MockFenderDevice } from "../protocol/mockDevice";
 
@@ -24,6 +26,7 @@ function accelMs2ToRate(accelMs2: number, unit: SpeedUnit): number {
 
 const NEAR_ZERO_MS = 0.05;
 const IDLE_MS = 5 * 60 * 1000;
+const SPEED_UNIT_KEY = "@fenderguard/speedUnit";
 
 export function useFender(transport?: FenderDeviceTransport) {
   const device = useMemo(() => transport ?? new MockFenderDevice(), [transport]);
@@ -43,14 +46,37 @@ export function useFender(transport?: FenderDeviceTransport) {
     accelLateralMs2: 0,
     timestampMs: 0,
   });
-  const [speedUnit, setSpeedUnit] = useState<SpeedUnit>("mph");
+  const [speedUnit, setSpeedUnitState] = useState<SpeedUnit>("mph");
   const [lastSessionAvgMs, setLastSessionAvgMs] = useState<number | null>(null);
   const [stationaryLongConnected, setStationaryLongConnected] = useState(false);
+  const [manualTurn, setManualTurnState] = useState<ManualTurn>("off");
 
   const sumMsRef = useRef(0);
   const countRef = useRef(0);
   const zeroSinceRef = useRef<number | null>(null);
   const prevConnectedRef = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(SPEED_UNIT_KEY);
+        if (!cancelled && (raw === "mph" || raw === "kmh")) {
+          setSpeedUnitState(raw);
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const setSpeedUnit = useCallback((u: SpeedUnit) => {
+    setSpeedUnitState(u);
+    void AsyncStorage.setItem(SPEED_UNIT_KEY, u).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const unsub = device.subscribe((l, t) => {
@@ -116,9 +142,30 @@ export function useFender(transport?: FenderDeviceTransport) {
 
   const sendCommand = useCallback(
     async (cmd: FenderLightsCommand) => {
-      await device.setCommand(cmd);
+      let mt: ManualTurn =
+        cmd.manualTurn !== undefined ? cmd.manualTurn : manualTurn;
+      if (cmd.hazardsOn) {
+        mt = "off";
+      }
+      setManualTurnState(mt);
+      await device.setCommand({
+        headlightMode: cmd.headlightMode,
+        hazardsOn: cmd.hazardsOn,
+        manualTurn: mt,
+      });
     },
-    [device]
+    [device, manualTurn]
+  );
+
+  const setManualTurn = useCallback(
+    (t: ManualTurn) => {
+      void sendCommand({
+        headlightMode: lights.headlightMode,
+        hazardsOn: lights.hazardsOn,
+        manualTurn: t,
+      });
+    },
+    [sendCommand, lights.headlightMode, lights.hazardsOn]
   );
 
   const speedDisplay =
@@ -154,6 +201,8 @@ export function useFender(transport?: FenderDeviceTransport) {
     lights,
     telem,
     sendCommand,
+    manualTurn,
+    setManualTurn,
     speedUnit,
     setSpeedUnit,
     speedDisplay,

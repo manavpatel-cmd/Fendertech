@@ -1,3 +1,5 @@
+import { Ionicons } from "@expo/vector-icons";
+import { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import Svg, {
   Circle,
@@ -8,8 +10,14 @@ import Svg, {
   Rect,
   Text as SvgText,
 } from "react-native-svg";
-import { C } from "../theme/colors";
-import type { FenderLightsStatus, HeadlightMode } from "../protocol/types";
+import { useAppTheme } from "../theme/ThemeContext";
+import type { AppTheme } from "../theme/colors";
+import type {
+  FenderLightsStatus,
+  HeadlightMode,
+  ManualTurn,
+} from "../protocol/types";
+import { hapticLight } from "../utils/haptics";
 import { useSyncedHazardPhase } from "./useSyncedHazardPhase";
 
 /** Closed path: waisted skate deck (top view), viewBox 0 0 340 520, symmetric about x=170 */
@@ -24,16 +32,22 @@ const TRUCK_Y_REAR = 398;
 type Props = {
   lights: FenderLightsStatus;
   connected: boolean;
+  manualTurn: ManualTurn;
   onHeadChange: (mode: HeadlightMode) => void;
   onHazardToggle: () => void;
+  onTurnArrowPress: (side: "left" | "right") => void;
 };
 
 export function SkateboardDiagram({
   lights,
   connected,
+  manualTurn,
   onHeadChange,
   onHazardToggle,
+  onTurnArrowPress,
 }: Props) {
+  const C = useAppTheme();
+  const styles = useMemo(() => createDiagramStyles(C), [C]);
   const head = lights.headlightMode;
   const hazardPhase = useSyncedHazardPhase(lights.hazardsOn);
   const { width: winW } = useWindowDimensions();
@@ -45,16 +59,48 @@ export function SkateboardDiagram({
   return (
     <View style={styles.wrap} accessibilityLabel="Skateboard lighting">
       <View style={styles.header}>
-        <Text style={styles.title}>Board lights</Text>
-        <Text style={styles.sub}>
+        <Text style={styles.title} maxFontSizeMultiplier={1.35}>
+          Board lights
+        </Text>
+        <Text style={styles.sub} maxFontSizeMultiplier={1.35}>
           Two headlamps and two tail lamps (left/right). Hazards flash in sync on
-          both sides. Turn signals and tail brightness follow the onboard IMU when
-          hazards are off.
+          both sides. Use the side arrows for turn indicators, or let the demo IMU
+          steer them when hazards are off.
         </Text>
       </View>
 
       <View style={styles.diagram}>
-        <Svg width={svgW} height={svgH} viewBox="0 0 340 520">
+        <View style={styles.diagramWithArrows}>
+          <Pressable
+            disabled={!connected || lights.hazardsOn}
+            onPress={() => onTurnArrowPress("left")}
+            style={({ pressed }) => [
+              styles.turnArrow,
+              manualTurn === "left" && styles.turnArrowActive,
+              (!connected || lights.hazardsOn) && styles.turnArrowDisabled,
+              pressed && connected && !lights.hazardsOn && styles.turnArrowPressed,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Left turn signal"
+            accessibilityHint="Toggles the left turn indicators. Tap again to turn off."
+            accessibilityState={{
+              disabled: !connected || lights.hazardsOn,
+              selected: manualTurn === "left",
+            }}
+          >
+            <Ionicons
+              name="chevron-back"
+              size={26}
+              color={
+                !connected || lights.hazardsOn
+                  ? C.muted
+                  : manualTurn === "left"
+                    ? C.accent
+                    : C.text
+              }
+            />
+          </Pressable>
+          <Svg width={svgW} height={svgH} viewBox="0 0 340 520">
           {/* Trucks + wheels (behind deck) */}
           <Line
             x1={TRUCK_X1}
@@ -74,10 +120,10 @@ export function SkateboardDiagram({
             strokeWidth={2}
             strokeLinecap="round"
           />
-          <Wheel cx={TRUCK_X1} cy={TRUCK_Y_FRONT} />
-          <Wheel cx={TRUCK_X2} cy={TRUCK_Y_FRONT} />
-          <Wheel cx={TRUCK_X1} cy={TRUCK_Y_REAR} />
-          <Wheel cx={TRUCK_X2} cy={TRUCK_Y_REAR} />
+          <Wheel cx={TRUCK_X1} cy={TRUCK_Y_FRONT} colors={C} />
+          <Wheel cx={TRUCK_X2} cy={TRUCK_Y_FRONT} colors={C} />
+          <Wheel cx={TRUCK_X1} cy={TRUCK_Y_REAR} colors={C} />
+          <Wheel cx={TRUCK_X2} cy={TRUCK_Y_REAR} colors={C} />
 
           {/* Deck wireframe + centerline */}
           <Path
@@ -110,7 +156,8 @@ export function SkateboardDiagram({
             x={170}
             y={268}
             textAnchor="middle"
-            fill="rgba(139,152,173,0.35)"
+            fill={C.muted}
+            opacity={0.45}
             fontSize={12}
             fontWeight="600"
           >
@@ -127,8 +174,8 @@ export function SkateboardDiagram({
           >
             Headlights (L / R)
           </SvgText>
-          <HeadBulb cx={128} cy={58} head={head} interactive />
-          <HeadBulb cx={212} cy={58} head={head} interactive />
+          <HeadBulb cx={128} cy={58} head={head} interactive colors={C} />
+          <HeadBulb cx={212} cy={58} head={head} interactive colors={C} />
 
           <CornerLamp
             cx={26}
@@ -136,6 +183,7 @@ export function SkateboardDiagram({
             turnOn={lights.turnFrontLeft}
             hazardOn={lights.hazardsOn}
             hazardPhase={hazardPhase}
+            colors={C}
           />
           <CornerLamp
             cx={314}
@@ -143,6 +191,7 @@ export function SkateboardDiagram({
             turnOn={lights.turnFrontRight}
             hazardOn={lights.hazardsOn}
             hazardPhase={hazardPhase}
+            colors={C}
           />
           <CornerLamp
             cx={26}
@@ -150,6 +199,7 @@ export function SkateboardDiagram({
             turnOn={lights.turnRearLeft}
             hazardOn={lights.hazardsOn}
             hazardPhase={hazardPhase}
+            colors={C}
           />
           <CornerLamp
             cx={314}
@@ -157,6 +207,7 @@ export function SkateboardDiagram({
             turnOn={lights.turnRearRight}
             hazardOn={lights.hazardsOn}
             hazardPhase={hazardPhase}
+            colors={C}
           />
           <SvgText
             x={26}
@@ -213,32 +264,46 @@ export function SkateboardDiagram({
           >
             Tail lights (L / R)
           </SvgText>
-          <TailBulb cx={128} cy={452} on={tailLit} />
-          <TailBulb cx={212} cy={452} on={tailLit} />
+          <TailBulb cx={128} cy={452} on={tailLit} colors={C} />
+          <TailBulb cx={212} cy={452} on={tailLit} colors={C} />
 
-          <SvgText
-            x={46}
-            y={238}
-            fill={C.muted}
-            fontSize={11}
-            fontWeight="600"
-            transform="rotate(-90, 46, 238)"
-          >
-            LEFT
-          </SvgText>
-          <SvgText
-            x={294}
-            y={294}
-            fill={C.muted}
-            fontSize={11}
-            fontWeight="600"
-            transform="rotate(90, 294, 294)"
-          >
-            RIGHT
-          </SvgText>
         </Svg>
+          <Pressable
+            disabled={!connected || lights.hazardsOn}
+            onPress={() => onTurnArrowPress("right")}
+            style={({ pressed }) => [
+              styles.turnArrow,
+              manualTurn === "right" && styles.turnArrowActive,
+              (!connected || lights.hazardsOn) && styles.turnArrowDisabled,
+              pressed && connected && !lights.hazardsOn && styles.turnArrowPressed,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Right turn signal"
+            accessibilityHint="Toggles the right turn indicators. Tap again to turn off."
+            accessibilityState={{
+              disabled: !connected || lights.hazardsOn,
+              selected: manualTurn === "right",
+            }}
+          >
+            <Ionicons
+              name="chevron-forward"
+              size={26}
+              color={
+                !connected || lights.hazardsOn
+                  ? C.muted
+                  : manualTurn === "right"
+                    ? C.accent
+                    : C.text
+              }
+            />
+          </Pressable>
+        </View>
 
-        <View style={[styles.headSeg, { width: svgW - 24, alignSelf: "center" }]}>
+        <View
+          style={[styles.headSeg, { width: svgW - 24, alignSelf: "center" }]}
+          accessibilityRole="radiogroup"
+          accessibilityLabel="Headlight brightness"
+        >
           {(
             [
               ["off", "Off"],
@@ -249,19 +314,26 @@ export function SkateboardDiagram({
             <Pressable
               key={mode}
               disabled={!connected}
-              onPress={() => onHeadChange(mode)}
+              onPress={() => {
+                hapticLight();
+                onHeadChange(mode);
+              }}
               style={({ pressed }) => [
                 styles.segBtn,
                 head === mode && styles.segBtnOn,
                 !connected && styles.segBtnDisabled,
                 pressed && connected && styles.segBtnPressed,
               ]}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: head === mode, disabled: !connected }}
+              accessibilityLabel={`Headlights ${label}`}
             >
               <Text
                 style={[
                   styles.segBtnText,
                   head === mode && styles.segBtnTextOn,
                 ]}
+                maxFontSizeMultiplier={1.35}
               >
                 {label}
               </Text>
@@ -270,22 +342,31 @@ export function SkateboardDiagram({
         </View>
 
         <View style={[styles.hazardBar, { maxWidth: svgW }]}>
-          <Text style={styles.hazardLabel}>Hazard lights</Text>
+          <Text style={styles.hazardLabel} maxFontSizeMultiplier={1.35}>
+            Hazard lights
+          </Text>
           <Pressable
             disabled={!connected}
-            onPress={onHazardToggle}
+            onPress={() => {
+              hapticLight();
+              onHazardToggle();
+            }}
             style={({ pressed }) => [
               styles.hazardBtn,
               lights.hazardsOn && styles.hazardBtnOn,
               !connected && styles.btnDisabled,
               pressed && connected && styles.hazardBtnPressed,
             ]}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: lights.hazardsOn, disabled: !connected }}
+            accessibilityLabel="Hazard lights"
           >
             <Text
               style={[
                 styles.hazardBtnText,
                 lights.hazardsOn && styles.hazardBtnTextOn,
               ]}
+              maxFontSizeMultiplier={1.35}
             >
               {lights.hazardsOn ? "On" : "Off"}
             </Text>
@@ -295,19 +376,27 @@ export function SkateboardDiagram({
         <View style={styles.legend}>
           <View style={styles.li}>
             <View style={[styles.dot, { backgroundColor: C.headLow }]} />
-            <Text style={styles.legendText}>Head (app)</Text>
+            <Text style={styles.legendText} maxFontSizeMultiplier={1.35}>
+              Head (app)
+            </Text>
           </View>
           <View style={styles.li}>
             <View style={[styles.dot, { backgroundColor: C.turn }]} />
-            <Text style={styles.legendText}>Turn (IMU)</Text>
+            <Text style={styles.legendText} maxFontSizeMultiplier={1.35}>
+              Turn (IMU)
+            </Text>
           </View>
           <View style={styles.li}>
             <View style={[styles.dot, { backgroundColor: C.tail }]} />
-            <Text style={styles.legendText}>Tail ×2 (decel)</Text>
+            <Text style={styles.legendText} maxFontSizeMultiplier={1.35}>
+              Tail ×2 (decel)
+            </Text>
           </View>
           <View style={styles.li}>
             <View style={[styles.dot, { backgroundColor: C.hazard }]} />
-            <Text style={styles.legendText}>Hazard (app)</Text>
+            <Text style={styles.legendText} maxFontSizeMultiplier={1.35}>
+              Hazard (app)
+            </Text>
           </View>
         </View>
       </View>
@@ -315,7 +404,7 @@ export function SkateboardDiagram({
   );
 }
 
-function Wheel({ cx, cy }: { cx: number; cy: number }) {
+function Wheel({ cx, cy, colors: C }: { cx: number; cy: number; colors: AppTheme }) {
   return (
     <G transform={`translate(${cx},${cy})`}>
       <Rect
@@ -339,12 +428,14 @@ function CornerLamp({
   turnOn,
   hazardOn,
   hazardPhase,
+  colors: C,
 }: {
   cx: number;
   cy: number;
   turnOn: boolean;
   hazardOn: boolean;
   hazardPhase: boolean;
+  colors: AppTheme;
 }) {
   let fill: string;
   let opacity: number;
@@ -376,11 +467,13 @@ function HeadBulb({
   cy,
   head,
   interactive,
+  colors: C,
 }: {
   cx: number;
   cy: number;
   head: HeadlightMode;
   interactive?: boolean;
+  colors: AppTheme;
 }) {
   const color =
     head === "off" ? "dim" : head === "low" ? "headLow" : "headHigh";
@@ -408,7 +501,17 @@ function HeadBulb({
   );
 }
 
-function TailBulb({ cx, cy, on }: { cx: number; cy: number; on: boolean }) {
+function TailBulb({
+  cx,
+  cy,
+  on,
+  colors: C,
+}: {
+  cx: number;
+  cy: number;
+  on: boolean;
+  colors: AppTheme;
+}) {
   const fill = on ? C.tail : C.lampOff;
   const opacity = on ? 1 : 0.35;
   return (
@@ -427,104 +530,130 @@ function TailBulb({ cx, cy, on }: { cx: number; cy: number; on: boolean }) {
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: {
-    backgroundColor: C.bgElevated,
-    borderWidth: 1,
-    borderColor: C.border,
-    borderRadius: C.radius,
-    paddingHorizontal: 18,
-    paddingTop: 18,
-    paddingBottom: 20,
-  },
-  header: { marginBottom: 14 },
-  title: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: C.text,
-    letterSpacing: -0.3,
-  },
-  sub: {
-    marginTop: 8,
-    fontSize: 14,
-    lineHeight: 20,
-    color: C.muted,
-    maxWidth: 520,
-  },
-  diagram: { gap: 14 },
-  headSeg: {
-    flexDirection: "row",
-    gap: 6,
-    justifyContent: "center",
-    marginTop: 4,
-  },
-  segBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: C.bgWell,
-    borderWidth: 1,
-    borderColor: C.border,
-    alignItems: "center",
-  },
-  segBtnOn: {
-    backgroundColor: "rgba(61, 158, 255, 0.18)",
-    borderColor: C.accentDim,
-  },
-  segBtnPressed: { opacity: 0.85 },
-  segBtnDisabled: { opacity: 0.45 },
-  segBtnText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: C.muted,
-  },
-  segBtnTextOn: { color: C.text },
-  hazardBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    backgroundColor: "rgba(0,0,0,0.28)",
-    borderWidth: 1,
-    borderColor: C.border,
-    alignSelf: "center",
-    width: "100%",
-  },
-  hazardLabel: { fontSize: 14, fontWeight: "600", color: C.muted },
-  hazardBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 18,
-    borderRadius: 10,
-    backgroundColor: "#1e2636",
-    borderWidth: 1,
-    borderColor: C.border,
-  },
-  hazardBtnOn: {
-    backgroundColor: C.hazard,
-    borderColor: "rgba(255,176,32,0.5)",
-  },
-  hazardBtnPressed: { opacity: 0.9 },
-  hazardBtnText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: C.muted,
-  },
-  hazardBtnTextOn: { color: C.bg },
-  btnDisabled: { opacity: 0.45 },
-  legend: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    marginTop: 4,
-    gap: 10,
-  },
-  li: { flexDirection: "row", alignItems: "center", gap: 8 },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
-  },
-  legendText: { fontSize: 12, color: C.muted },
-});
+function createDiagramStyles(C: AppTheme) {
+  return StyleSheet.create({
+    wrap: {
+      backgroundColor: C.bgElevated,
+      borderWidth: 1,
+      borderColor: C.border,
+      borderRadius: C.radius,
+      paddingHorizontal: 18,
+      paddingTop: 18,
+      paddingBottom: 20,
+    },
+    header: { marginBottom: 14 },
+    title: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: C.text,
+      letterSpacing: -0.3,
+    },
+    sub: {
+      marginTop: 8,
+      fontSize: 14,
+      lineHeight: 20,
+      color: C.muted,
+      maxWidth: 520,
+    },
+    diagram: { gap: 14 },
+    diagramWithArrows: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 2,
+      width: "100%",
+    },
+    turnArrow: {
+      width: 40,
+      minHeight: 200,
+      justifyContent: "center",
+      alignItems: "center",
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: C.border,
+      backgroundColor: C.bgWell,
+      flexShrink: 0,
+    },
+    turnArrowActive: {
+      backgroundColor: C.unitToggleActiveBg,
+      borderColor: C.unitToggleActiveBorder,
+    },
+    turnArrowDisabled: { opacity: 0.45 },
+    turnArrowPressed: { opacity: 0.88 },
+    headSeg: {
+      flexDirection: "row",
+      gap: 6,
+      justifyContent: "center",
+      marginTop: 4,
+    },
+    segBtn: {
+      flex: 1,
+      paddingVertical: 10,
+      borderRadius: 10,
+      backgroundColor: C.bgWell,
+      borderWidth: 1,
+      borderColor: C.border,
+      alignItems: "center",
+    },
+    segBtnOn: {
+      backgroundColor: C.unitToggleActiveBg,
+      borderColor: C.unitToggleActiveBorder,
+    },
+    segBtnPressed: { opacity: 0.85 },
+    segBtnDisabled: { opacity: 0.45 },
+    segBtnText: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: C.muted,
+    },
+    segBtnTextOn: { color: C.text },
+    hazardBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      borderRadius: 12,
+      backgroundColor: C.bgWell,
+      borderWidth: 1,
+      borderColor: C.border,
+      alignSelf: "center",
+      width: "100%",
+    },
+    hazardLabel: { fontSize: 14, fontWeight: "600", color: C.muted },
+    hazardBtn: {
+      paddingVertical: 8,
+      paddingHorizontal: 18,
+      borderRadius: 10,
+      backgroundColor: C.bgSubtle,
+      borderWidth: 1,
+      borderColor: C.border,
+    },
+    hazardBtnOn: {
+      backgroundColor: C.hazard,
+      borderColor: "rgba(217, 119, 6, 0.45)",
+    },
+    hazardBtnPressed: { opacity: 0.9 },
+    hazardBtnText: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: C.muted,
+    },
+    hazardBtnTextOn: { color: C.onHazardText },
+    btnDisabled: { opacity: 0.45 },
+    legend: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "center",
+      marginTop: 4,
+      gap: 10,
+    },
+    li: { flexDirection: "row", alignItems: "center", gap: 8 },
+    dot: {
+      width: 10,
+      height: 10,
+      borderRadius: 999,
+    },
+    legendText: { fontSize: 12, color: C.muted },
+  });
+}

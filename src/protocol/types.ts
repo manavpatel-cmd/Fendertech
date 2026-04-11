@@ -4,9 +4,14 @@
  */
 export type HeadlightMode = "off" | "low" | "high";
 
+/** App UI: force left/right turn indicators (mock + optional firmware byte). */
+export type ManualTurn = "off" | "left" | "right";
+
 export interface FenderLightsCommand {
   headlightMode: HeadlightMode;
   hazardsOn: boolean;
+  /** When set, overrides IMU-derived turn signals (unless hazards are on). */
+  manualTurn?: ManualTurn;
 }
 
 /**
@@ -46,10 +51,15 @@ export const CHAR_LIGHTS_CMD = "e4c53781-e0e0-4a8c-9f9a-4c5f3e2d1a01";
 export const CHAR_LIGHTS_STATUS = "e4c53782-e0e0-4a8c-9f9a-4c5f3e2d1a02";
 export const CHAR_TELEMETRY = "e4c53783-e0e0-4a8c-9f9a-4c5f3e2d1a03";
 
-/** Wire format: [head 0–2][hazards 0–1][tail][FL][FR][RL][RR] — booleans 0/1. */
+/**
+ * Wire format: [head 0–2][hazards 0–1][manualTurn 0–2 off/left/right].
+ * Older firmware that only reads 2 bytes can ignore the third byte.
+ */
 export function encodeLightsCommand(cmd: FenderLightsCommand): Uint8Array {
   const head = cmd.headlightMode === "off" ? 0 : cmd.headlightMode === "low" ? 1 : 2;
-  return new Uint8Array([head, cmd.hazardsOn ? 1 : 0]);
+  const mt =
+    cmd.manualTurn === "left" ? 1 : cmd.manualTurn === "right" ? 2 : 0;
+  return new Uint8Array([head, cmd.hazardsOn ? 1 : 0, mt]);
 }
 
 export function decodeLightsStatus(data: Uint8Array): FenderLightsStatus | null {
