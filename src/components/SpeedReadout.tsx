@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import Svg, { G, Path, Polyline, Text as SvgText } from "react-native-svg";
 import type { SpeedUnit } from "../hooks/useFender";
 import { useAppTheme } from "../theme/ThemeContext";
@@ -239,7 +239,7 @@ const gaugeStyles = StyleSheet.create({
   },
 });
 
-function createStyles(C: AppTheme) {
+function createStyles(C: AppTheme, compact: boolean) {
   return StyleSheet.create({
     card: {
       backgroundColor: C.bgElevated,
@@ -280,9 +280,9 @@ function createStyles(C: AppTheme) {
       color: C.text,
     },
     speedColumns: {
-      flexDirection: "row",
-      alignItems: "flex-start",
-      gap: 14,
+      flexDirection: compact ? "column" : "row",
+      alignItems: compact ? "stretch" : "flex-start",
+      gap: compact ? 10 : 14,
       marginBottom: 10,
     },
     speedColPrimary: {
@@ -292,28 +292,31 @@ function createStyles(C: AppTheme) {
     speedColAvg: {
       flex: 1.15,
       minWidth: 0,
-      borderLeftWidth: 1,
+      borderLeftWidth: compact ? 0 : 1,
+      borderTopWidth: compact ? 1 : 0,
       borderLeftColor: C.border,
-      paddingLeft: 14,
+      borderTopColor: C.border,
+      paddingLeft: compact ? 0 : 14,
       justifyContent: "center",
-      paddingTop: 24,
+      paddingTop: compact ? 12 : 24,
     },
     speedStatPair: {
       flexDirection: "row",
       alignItems: "flex-start",
-      gap: 12,
+      gap: compact ? 8 : 12,
     },
     speedStatCell: {
       flex: 1,
       minWidth: 0,
+      alignItems: compact ? "center" : "flex-start",
     },
     speedStatDivider: {
       borderLeftWidth: 1,
       borderLeftColor: C.border,
-      paddingLeft: 12,
+      paddingLeft: compact ? 8 : 12,
     },
     avgKicker: {
-      fontSize: 11,
+      fontSize: compact ? 10 : 11,
       fontWeight: "600",
       color: C.muted,
       letterSpacing: 0.4,
@@ -323,18 +326,18 @@ function createStyles(C: AppTheme) {
     avgValueRow: {
       flexDirection: "row",
       alignItems: "baseline",
-      gap: 8,
+      gap: compact ? 4 : 8,
     },
     avgValue: {
-      fontSize: 36,
+      fontSize: compact ? 28 : 36,
       fontWeight: "600",
-      lineHeight: 40,
+      lineHeight: compact ? 32 : 40,
       color: C.text,
       letterSpacing: -0.5,
       fontVariant: ["tabular-nums"],
     },
     avgUnit: {
-      fontSize: 15,
+      fontSize: compact ? 13 : 15,
       fontWeight: "600",
       color: C.muted,
     },
@@ -367,8 +370,10 @@ export function SpeedReadout({
   averageSpeed,
   topSpeed,
 }: Props) {
+  const { width } = useWindowDimensions();
+  const compact = width < 430;
   const C = useAppTheme();
-  const styles = useMemo(() => createStyles(C), [C]);
+  const styles = useMemo(() => createStyles(C, compact), [C, compact]);
   const unitLabel = unit === "mph" ? "MPH" : "KM/H";
   const rateLabel = unit === "mph" ? "mph/s" : "km/h/s";
 

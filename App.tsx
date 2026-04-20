@@ -4,8 +4,9 @@
  * preview.html is a standalone browser demo only; this Expo app is the source you iterate on.
  */
 import * as Device from "expo-device";
+import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import {
   ActivityIndicator,
@@ -22,6 +23,7 @@ import {
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { SpeedReadout } from "./src/components/SpeedReadout";
 import { SkateboardDiagram } from "./src/components/SkateboardDiagram";
+import { SplashStunt } from "./src/components/SplashStunt";
 import { useFender } from "./src/hooks/useFender";
 import type { HeadlightMode } from "./src/protocol/types";
 import { createDefaultTransport } from "./src/transport/createDefaultTransport";
@@ -32,6 +34,10 @@ import {
 import { ThemeProvider, useAppTheme } from "./src/theme/ThemeContext";
 import type { AppTheme } from "./src/theme/colors";
 import { hapticLight, hapticMedium } from "./src/utils/haptics";
+
+if (Platform.OS !== "web") {
+  void SplashScreen.preventAutoHideAsync();
+}
 
 const FONT_MAX = 1.35;
 
@@ -253,6 +259,7 @@ function AppShell({ themePreference, onCycleTheme }: AppShellProps) {
   const transport = useMemo(() => createDefaultTransport(), []);
   const {
     connected,
+    peerDisplayName,
     connect,
     disconnect,
     lights,
@@ -424,7 +431,13 @@ function AppShell({ themePreference, onCycleTheme }: AppShellProps) {
                     importantForAccessibility="no"
                   />
                   <Text style={styles.pillText} maxFontSizeMultiplier={FONT_MAX}>
-                    {connected ? "Connected" : "Disconnected"}
+                    {connected
+                      ? peerDisplayName
+                        ? `Connected · ${peerDisplayName}`
+                        : isPreview
+                          ? "Demo"
+                          : "Connected"
+                      : "Disconnected"}
                   </Text>
                 </View>
                 <Ionicons name="chevron-down" size={18} color={C.muted} importantForAccessibility="no" />
@@ -457,14 +470,20 @@ function AppShell({ themePreference, onCycleTheme }: AppShellProps) {
                     FenderGuard accessory
                   </Text>
                   <Text style={styles.modalStatus} maxFontSizeMultiplier={FONT_MAX}>
-                    {connected ? "Connected to fender" : "Not connected"}
+                    {connected
+                      ? peerDisplayName
+                        ? `Connected to ${peerDisplayName}`
+                        : isPreview
+                          ? "Connected (motion demo)"
+                          : "Connected"
+                      : "Not connected"}
                   </Text>
                   <Text style={styles.modalBody} maxFontSizeMultiplier={FONT_MAX}>
                     {Platform.OS === "web"
                       ? "Web preview has no Bluetooth. Use the iOS build on an iPhone to scan for a fender that advertises the FenderGuard service."
                       : isPreview
-                        ? "Simulator uses the motion demo only. On a real iPhone, scan finds hardware advertising the FenderGuard BLE service."
-                        : "Stay within range. The app scans for the FenderGuard service UUID — power on your fender and tap connect below."}
+                        ? "Simulator uses the motion demo only (no radio). On a real iPhone, use Scan & connect — the ESP32 simulator firmware advertises as FenderGuard-SIM and sends the same synthetic motion over BLE."
+                        : "Stay within range. The app scans for the FenderGuard service UUID. Power the ESP32 (simulator build shows as FenderGuard-SIM), keep it near the phone, then tap Scan & connect. Simulator firmware uses the same fake motion math as the in-app demo, so numbers look similar — that means the link is working."}
                   </Text>
                   <Pressable
                     onPress={() => {
@@ -547,7 +566,14 @@ function AppShell({ themePreference, onCycleTheme }: AppShellProps) {
 }
 
 export default function App() {
+  const [stuntDone, setStuntDone] = useState(false);
+  const onStuntFinish = useCallback(() => setStuntDone(true), []);
   const { isDark, preference, cyclePreference } = useThemePreference();
+
+  if (!stuntDone) {
+    return <SplashStunt onFinish={onStuntFinish} />;
+  }
+
   return (
     <SafeAreaProvider>
       <ThemeProvider isDark={isDark}>

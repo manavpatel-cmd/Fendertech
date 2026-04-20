@@ -12,3 +12,8 @@ android
 web-build/
 *.local
 .DS_Store
+
+# PlatformIO (libraries & build — reinstall with `pio run`)
+firmware/**/.pio/
+firmware/**/compile_commands.json
+firmware/**/.cache/

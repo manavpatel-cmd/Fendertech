@@ -52,9 +52,14 @@ export class BlePlxTransport implements FenderDeviceTransport {
     timestampMs: 0,
   };
   private pairing = false;
+  private peerName: string | null = null;
 
   get connected(): boolean {
     return this._connected;
+  }
+
+  get peerDisplayName(): string | null {
+    return this.peerName;
   }
 
   subscribe(onUpdate: FenderDeviceListener): () => void {
@@ -157,6 +162,7 @@ export class BlePlxTransport implements FenderDeviceTransport {
 
     this.clearMonitors();
     this.device = d;
+    this.peerName = d.name ?? d.localName ?? null;
 
     this.subs.push(
       d.monitorCharacteristicForService(
@@ -210,6 +216,7 @@ export class BlePlxTransport implements FenderDeviceTransport {
   private handleDisconnect(): void {
     this.clearMonitors();
     this.device = null;
+    this.peerName = null;
     this._connected = false;
     this.emit();
   }
@@ -219,6 +226,7 @@ export class BlePlxTransport implements FenderDeviceTransport {
     this.clearMonitors();
     const d = this.device;
     this.device = null;
+    this.peerName = null;
     this._connected = false;
     if (d) void d.cancelConnection();
     this.emit();

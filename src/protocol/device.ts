@@ -18,4 +18,6 @@ export interface FenderDeviceTransport {
     onUpdate: FenderDeviceListener
   ): () => void;
   get connected(): boolean;
+  /** BLE peripheral name when connected; null for mock / no peer. */
+  get peerDisplayName(): string | null;
 }

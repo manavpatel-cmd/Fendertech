@@ -44,6 +44,10 @@ export class MockFenderDevice implements FenderDeviceTransport {
     return this._connected;
   }
 
+  get peerDisplayName(): string | null {
+    return null;
+  }
+
   async connect(): Promise<void> {
     if (this._connected) return;
     this._connected = true;

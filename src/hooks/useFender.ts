@@ -51,6 +51,7 @@ export function useFender(transport?: FenderDeviceTransport) {
   const [lastSessionTopMs, setLastSessionTopMs] = useState<number | null>(null);
   const [stationaryLongConnected, setStationaryLongConnected] = useState(false);
   const [manualTurn, setManualTurnState] = useState<ManualTurn>("off");
+  const [peerDisplayName, setPeerDisplayName] = useState<string | null>(null);
 
   const sumMsRef = useRef(0);
   const countRef = useRef(0);
@@ -86,6 +87,7 @@ export function useFender(transport?: FenderDeviceTransport) {
       setTelem(t);
       const nowConnected = device.connected;
       setConnected(nowConnected);
+      setPeerDisplayName(device.peerDisplayName);
 
       if (nowConnected) {
         sumMsRef.current += t.speedMs;
@@ -145,6 +147,7 @@ export function useFender(transport?: FenderDeviceTransport) {
   const disconnect = useCallback(() => {
     device.disconnect();
     setConnected(false);
+    setPeerDisplayName(device.peerDisplayName);
   }, [device]);
 
   const sendCommand = useCallback(
@@ -220,6 +223,7 @@ export function useFender(transport?: FenderDeviceTransport) {
 
   return {
     connected,
+    peerDisplayName,
     connect,
     disconnect,
     lights,
