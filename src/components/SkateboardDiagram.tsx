@@ -62,14 +62,83 @@ export function SkateboardDiagram({
         <Text style={styles.title} maxFontSizeMultiplier={1.35}>
           Board lights
         </Text>
-        <Text style={styles.sub} maxFontSizeMultiplier={1.35}>
-          Two headlamps and two tail lamps (left/right). Hazards flash in sync on
-          both sides. Use the side arrows for turn indicators, or let the demo IMU
-          steer them when hazards are off.
-        </Text>
       </View>
 
       <View style={styles.diagram}>
+        <View
+          style={[styles.headSeg, { width: svgW - 24, alignSelf: "center" }]}
+          accessibilityRole="radiogroup"
+          accessibilityLabel="Headlight brightness"
+        >
+          {(
+            [
+              ["off", "Off"],
+              ["low", "Low"],
+              ["high", "High"],
+            ] as const
+          ).map(([mode, label]) => (
+            <Pressable
+              key={mode}
+              disabled={!connected}
+              onPress={() => {
+                hapticLight();
+                onHeadChange(mode);
+              }}
+              style={({ pressed }) => [
+                styles.segBtn,
+                head === mode && styles.segBtnOn,
+                !connected && styles.segBtnDisabled,
+                pressed && connected && styles.segBtnPressed,
+              ]}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: head === mode, disabled: !connected }}
+              accessibilityLabel={`Headlights ${label}`}
+            >
+              <Text
+                style={[
+                  styles.segBtnText,
+                  head === mode && styles.segBtnTextOn,
+                ]}
+                maxFontSizeMultiplier={1.35}
+              >
+                {label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <View style={[styles.hazardBar, { maxWidth: svgW }]}>
+          <Text style={styles.hazardLabel} maxFontSizeMultiplier={1.35}>
+            Hazard lights
+          </Text>
+          <Pressable
+            disabled={!connected}
+            onPress={() => {
+              hapticLight();
+              onHazardToggle();
+            }}
+            style={({ pressed }) => [
+              styles.hazardBtn,
+              lights.hazardsOn && styles.hazardBtnOn,
+              !connected && styles.btnDisabled,
+              pressed && connected && styles.hazardBtnPressed,
+            ]}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: lights.hazardsOn, disabled: !connected }}
+            accessibilityLabel="Hazard lights"
+          >
+            <Text
+              style={[
+                styles.hazardBtnText,
+                lights.hazardsOn && styles.hazardBtnTextOn,
+              ]}
+              maxFontSizeMultiplier={1.35}
+            >
+              {lights.hazardsOn ? "On" : "Off"}
+            </Text>
+          </Pressable>
+        </View>
+
         <View style={styles.diagramWithArrows}>
           <Pressable
             disabled={!connected || lights.hazardsOn}
@@ -299,80 +368,6 @@ export function SkateboardDiagram({
           </Pressable>
         </View>
 
-        <View
-          style={[styles.headSeg, { width: svgW - 24, alignSelf: "center" }]}
-          accessibilityRole="radiogroup"
-          accessibilityLabel="Headlight brightness"
-        >
-          {(
-            [
-              ["off", "Off"],
-              ["low", "Low"],
-              ["high", "High"],
-            ] as const
-          ).map(([mode, label]) => (
-            <Pressable
-              key={mode}
-              disabled={!connected}
-              onPress={() => {
-                hapticLight();
-                onHeadChange(mode);
-              }}
-              style={({ pressed }) => [
-                styles.segBtn,
-                head === mode && styles.segBtnOn,
-                !connected && styles.segBtnDisabled,
-                pressed && connected && styles.segBtnPressed,
-              ]}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: head === mode, disabled: !connected }}
-              accessibilityLabel={`Headlights ${label}`}
-            >
-              <Text
-                style={[
-                  styles.segBtnText,
-                  head === mode && styles.segBtnTextOn,
-                ]}
-                maxFontSizeMultiplier={1.35}
-              >
-                {label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <View style={[styles.hazardBar, { maxWidth: svgW }]}>
-          <Text style={styles.hazardLabel} maxFontSizeMultiplier={1.35}>
-            Hazard lights
-          </Text>
-          <Pressable
-            disabled={!connected}
-            onPress={() => {
-              hapticLight();
-              onHazardToggle();
-            }}
-            style={({ pressed }) => [
-              styles.hazardBtn,
-              lights.hazardsOn && styles.hazardBtnOn,
-              !connected && styles.btnDisabled,
-              pressed && connected && styles.hazardBtnPressed,
-            ]}
-            accessibilityRole="switch"
-            accessibilityState={{ checked: lights.hazardsOn, disabled: !connected }}
-            accessibilityLabel="Hazard lights"
-          >
-            <Text
-              style={[
-                styles.hazardBtnText,
-                lights.hazardsOn && styles.hazardBtnTextOn,
-              ]}
-              maxFontSizeMultiplier={1.35}
-            >
-              {lights.hazardsOn ? "On" : "Off"}
-            </Text>
-          </Pressable>
-        </View>
-
         <View style={styles.legend}>
           <View style={styles.li}>
             <View style={[styles.dot, { backgroundColor: C.headLow }]} />
@@ -547,13 +542,6 @@ function createDiagramStyles(C: AppTheme) {
       fontWeight: "700",
       color: C.text,
       letterSpacing: -0.3,
-    },
-    sub: {
-      marginTop: 8,
-      fontSize: 14,
-      lineHeight: 20,
-      color: C.muted,
-      maxWidth: 520,
     },
     diagram: { gap: 14 },
     diagramWithArrows: {

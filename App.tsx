@@ -56,25 +56,12 @@ function createAppStyles(C: AppTheme) {
       flexDirection: "row",
       flexWrap: "wrap",
       justifyContent: "space-between",
-      gap: 20,
-      marginBottom: 28,
+      gap: 14,
+      marginBottom: 16,
     },
-    topText: { flex: 1, minWidth: 240 },
-    company: {
-      fontSize: 11,
-      fontWeight: "700",
-      letterSpacing: 1.2,
-      textTransform: "uppercase",
-      color: C.muted,
-    },
-    companyTag: {
-      marginTop: 2,
-      marginBottom: 4,
-      fontSize: 12,
-      color: C.muted,
-      opacity: 0.9,
-    },
+    topText: { flex: 1, minWidth: 220 },
     brand: {
+      marginTop: 2,
       fontSize: 12,
       fontWeight: "700",
       letterSpacing: 2,
@@ -82,18 +69,12 @@ function createAppStyles(C: AppTheme) {
       color: C.accent,
     },
     h1: {
-      marginTop: 6,
-      marginBottom: 8,
-      fontSize: 28,
+      marginTop: 4,
+      marginBottom: 2,
+      fontSize: 26,
       fontWeight: "700",
       color: C.text,
       letterSpacing: -0.5,
-    },
-    lead: {
-      fontSize: 15,
-      lineHeight: 22,
-      color: C.muted,
-      maxWidth: 480,
     },
     topActions: {
       flexDirection: "row",
@@ -169,14 +150,20 @@ function createAppStyles(C: AppTheme) {
     },
     grid: { gap: 18 },
     foot: {
-      marginTop: 28,
-      paddingTop: 20,
+      marginTop: 20,
+      paddingTop: 16,
       borderTopWidth: 1,
       borderTopColor: C.border,
+      gap: 10,
+    },
+    footMeta: {
+      fontSize: 13,
+      lineHeight: 20,
+      color: C.muted,
     },
     footText: {
-      fontSize: 13,
-      lineHeight: 21,
+      fontSize: 12,
+      lineHeight: 20,
       color: C.muted,
     },
     code: {
@@ -342,24 +329,11 @@ function AppShell({ themePreference, onCycleTheme }: AppShellProps) {
         >
           <View style={styles.top}>
             <View style={styles.topText}>
-              <Text style={styles.company} maxFontSizeMultiplier={FONT_MAX}>
-                SSR Tech
-              </Text>
-              <Text style={styles.companyTag} maxFontSizeMultiplier={FONT_MAX}>
-                Skate, Scoot, Ride Technologies
-              </Text>
               <Text style={styles.brand} maxFontSizeMultiplier={FONT_MAX}>
                 FenderGuard
               </Text>
               <Text style={styles.h1} maxFontSizeMultiplier={FONT_MAX}>
                 Rider console
-              </Text>
-              <Text style={styles.lead} maxFontSizeMultiplier={FONT_MAX}>
-                {Platform.OS === "web"
-                  ? "Web preview: motion demo only — no Bluetooth. Use the iOS app on a real iPhone for BLE."
-                  : isPreview
-                    ? "Simulator uses a motion demo — no Bluetooth. Run on an iPhone for BLE."
-                    : "Native iOS app: scan finds a fender advertising the FenderGuard BLE service."}
               </Text>
             </View>
             <View style={styles.topActions}>
@@ -552,6 +526,13 @@ function AppShell({ themePreference, onCycleTheme }: AppShellProps) {
           </View>
 
           <View style={styles.foot}>
+            <Text style={styles.footMeta} maxFontSizeMultiplier={FONT_MAX}>
+              {Platform.OS === "web"
+                ? "Web preview: motion demo only (no Bluetooth)."
+                : isPreview
+                  ? "Simulator mode: motion demo only (no Bluetooth)."
+                  : "Native iOS: use Bluetooth menu to scan for FenderGuard-SIM / FenderGuard-ESP32."}
+            </Text>
             <Text style={styles.footText} maxFontSizeMultiplier={FONT_MAX}>
               © SSR Tech · FenderGuard. Protocol UUIDs in{" "}
               <Text style={styles.code}>src/protocol/types.ts</Text>. Native iOS:{" "}
