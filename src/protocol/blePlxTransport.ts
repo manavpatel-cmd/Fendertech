@@ -30,11 +30,14 @@ function fromBase64(b64: string): Uint8Array {
 
 const SCAN_MS = 30_000;
 
+const TELEM_UI_EMIT_DEBOUNCE_MS = 45;
+
 export class BlePlxTransport implements FenderDeviceTransport {
   private manager = new BleManager();
   private listeners = new Set<FenderDeviceListener>();
   private subs: Subscription[] = [];
   private device: Device | null = null;
+  private telemEmitTimer: ReturnType<typeof setTimeout> | null = null;
   private _connected = false;
   private lights: FenderLightsStatus = {
     headlightMode: "off",
@@ -72,6 +75,15 @@ export class BlePlxTransport implements FenderDeviceTransport {
     for (const fn of this.listeners) {
       fn({ ...this.lights }, { ...this.telem });
     }
+  }
+
+  /** Limit telemetry-driven React updates; lights/status stay instant. */
+  private scheduleEmitFromTelemetry(): void {
+    if (this.telemEmitTimer != null) return;
+    this.telemEmitTimer = setTimeout(() => {
+      this.telemEmitTimer = null;
+      this.emit();
+    }, TELEM_UI_EMIT_DEBOUNCE_MS);
   }
 
   private async ensurePoweredOn(): Promise<void> {
@@ -194,7 +206,7 @@ export class BlePlxTransport implements FenderDeviceTransport {
           const parsed = decodeTelemetry(dv);
           if (parsed) {
             this.telem = parsed;
-            this.emit();
+            this.scheduleEmitFromTelemetry();
           }
         }
       )
@@ -209,6 +221,10 @@ export class BlePlxTransport implements FenderDeviceTransport {
   }
 
   private clearMonitors(): void {
+    if (this.telemEmitTimer != null) {
+      clearTimeout(this.telemEmitTimer);
+      this.telemEmitTimer = null;
+    }
     for (const s of this.subs) s.remove();
     this.subs = [];
   }
@@ -219,6 +235,10 @@ export class BlePlxTransport implements FenderDeviceTransport {
     this.peerName = null;
     this._connected = false;
     this.emit();
+  }
+
+  stopScan(): void {
+    this.manager.stopDeviceScan();
   }
 
   disconnect(): void {
@@ -236,6 +256,8 @@ export class BlePlxTransport implements FenderDeviceTransport {
     const d = this.device;
     if (!d || !this._connected) return;
     const payload = toBase64(encodeLightsCommand(cmd));
+    // Use Write-with-response: writes without-response are unreliable iOS ↔ NimBLE when
+    // characteristics also expose WRITE_RSP; telemetry notify path is debounced separately.
     await d.writeCharacteristicWithResponseForService(
       BLE_SERVICE_UUID,
       CHAR_LIGHTS_CMD,

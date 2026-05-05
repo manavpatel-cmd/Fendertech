@@ -59,6 +59,10 @@ export class MockFenderDevice implements FenderDeviceTransport {
     this.raf = requestAnimationFrame(loop);
   }
 
+  stopScan(): void {
+    /* simulator has no radio */
+  }
+
   disconnect(): void {
     this._connected = false;
     cancelAnimationFrame(this.raf);

@@ -172,11 +172,8 @@ function createAppStyles(C: AppTheme) {
       color: C.text,
     },
     modalRoot: { flex: 1 },
-    modalBackdrop: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: "rgba(0,0,0,0.55)",
-    },
-    modalCenter: {
+    /** Covers the modal; taps outside the card hit the dismiss layer below via box-none passthrough */
+    modalLayer: {
       ...StyleSheet.absoluteFillObject,
       justifyContent: "center",
       paddingHorizontal: 24,
@@ -195,6 +192,7 @@ function createAppStyles(C: AppTheme) {
       shadowOpacity: 0.12,
       shadowRadius: 24,
       elevation: 8,
+      zIndex: 1,
     },
     modalHeader: {
       flexDirection: "row",
@@ -249,6 +247,7 @@ function AppShell({ themePreference, onCycleTheme }: AppShellProps) {
     peerDisplayName,
     connect,
     disconnect,
+    stopScan,
     lights,
     sendCommand,
     manualTurn,
@@ -264,6 +263,14 @@ function AppShell({ themePreference, onCycleTheme }: AppShellProps) {
   const [busy, setBusy] = useState(false);
   const [btMenuOpen, setBtMenuOpen] = useState(false);
 
+  const closeBtModal = useCallback(() => {
+    setBtMenuOpen(false);
+    setBusy(false);
+    if (!connected) {
+      stopScan();
+    }
+  }, [connected, stopScan]);
+
   const isPreview =
     Platform.OS === "web" || !Device.isDevice;
   const connectLabel = isPreview ? "Connect (demo)" : "Scan & connect";
@@ -271,13 +278,13 @@ function AppShell({ themePreference, onCycleTheme }: AppShellProps) {
   const onModalPrimary = async () => {
     if (connected) {
       disconnect();
-      setBtMenuOpen(false);
+      closeBtModal();
       return;
     }
     setBusy(true);
     try {
       await connect();
-      setBtMenuOpen(false);
+      closeBtModal();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unknown error";
       Alert.alert("Could not connect", msg);
@@ -325,7 +332,7 @@ function AppShell({ themePreference, onCycleTheme }: AppShellProps) {
       <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
         <ScrollView
           contentContainerStyle={[styles.scroll, { paddingHorizontal: scrollPadH }]}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps="always"
         >
           <View style={styles.top}>
             <View style={styles.topText}>
@@ -423,16 +430,23 @@ function AppShell({ themePreference, onCycleTheme }: AppShellProps) {
             visible={btMenuOpen}
             transparent
             animationType="fade"
-            onRequestClose={() => setBtMenuOpen(false)}
+            onRequestClose={closeBtModal}
             accessibilityViewIsModal
           >
             <View style={styles.modalRoot}>
               <Pressable
-                style={styles.modalBackdrop}
-                onPress={() => setBtMenuOpen(false)}
                 accessibilityLabel="Dismiss"
+                accessibilityRole="button"
+                style={[
+                  StyleSheet.absoluteFillObject,
+                  { backgroundColor: "rgba(0,0,0,0.55)" },
+                ]}
+                onPress={() => {
+                  hapticLight();
+                  closeBtModal();
+                }}
               />
-              <View style={styles.modalCenter} pointerEvents="box-none">
+              <View style={styles.modalLayer} pointerEvents="box-none">
                 <View style={styles.modalCard} accessibilityRole="none">
                   <View style={styles.modalHeader}>
                     <Ionicons name="bluetooth" size={26} color={C.accent} importantForAccessibility="no" />
@@ -456,8 +470,8 @@ function AppShell({ themePreference, onCycleTheme }: AppShellProps) {
                     {Platform.OS === "web"
                       ? "Web preview has no Bluetooth. Use the iOS build on an iPhone to scan for a fender that advertises the FenderGuard service."
                       : isPreview
-                        ? "Simulator uses the motion demo only (no radio). On a real iPhone, use Scan & connect — the ESP32 simulator firmware advertises as FenderGuard-SIM and sends the same synthetic motion over BLE."
-                        : "Stay within range. The app scans for the FenderGuard service UUID. Power the ESP32 (simulator build shows as FenderGuard-SIM), keep it near the phone, then tap Scan & connect. Simulator firmware uses the same fake motion math as the in-app demo, so numbers look similar — that means the link is working."}
+                        ? "Simulator uses the motion demo only (no radio). On a real iPhone, use Scan & connect — the ESP32 simulator firmware advertises as FenderBoard-SIM and sends the same synthetic motion over BLE."
+                        : "Stay within range. The app scans for the FenderGuard service UUID. Power the ESP32 (real board advertises as FenderBoard; simulator as FenderBoard-SIM), keep it near the phone, then tap Scan & connect. Simulator firmware uses the same fake motion math as the in-app demo, so numbers look similar — that means the link is working."}
                   </Text>
                   <Pressable
                     onPress={() => {
@@ -493,7 +507,7 @@ function AppShell({ themePreference, onCycleTheme }: AppShellProps) {
                   <Pressable
                     onPress={() => {
                       hapticLight();
-                      setBtMenuOpen(false);
+                      closeBtModal();
                     }}
                     style={styles.modalClose}
                     accessibilityLabel="Close Bluetooth menu"
@@ -531,7 +545,7 @@ function AppShell({ themePreference, onCycleTheme }: AppShellProps) {
                 ? "Web preview: motion demo only (no Bluetooth)."
                 : isPreview
                   ? "Simulator mode: motion demo only (no Bluetooth)."
-                  : "Native iOS: use Bluetooth menu to scan for FenderGuard-SIM / FenderGuard-ESP32."}
+                  : "Native iOS: use Bluetooth menu to scan for FenderBoard / FenderBoard-SIM."}
             </Text>
             <Text style={styles.footText} maxFontSizeMultiplier={FONT_MAX}>
               © SSR Tech · FenderGuard. Protocol UUIDs in{" "}

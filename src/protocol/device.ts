@@ -13,6 +13,8 @@ export type FenderDeviceListener = (
 export interface FenderDeviceTransport {
   connect(): Promise<void>;
   disconnect(): void;
+  /** Stops an in-progress device scan without disconnecting an active link. */
+  stopScan(): void;
   setCommand(cmd: FenderLightsCommand): Promise<void>;
   subscribe(
     onUpdate: FenderDeviceListener

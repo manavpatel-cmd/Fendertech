@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { unstable_batchedUpdates } from "react-native";
 import type { FenderDeviceTransport } from "../protocol/device";
 import type {
   FenderLightsCommand,
@@ -83,26 +84,28 @@ export function useFender(transport?: FenderDeviceTransport) {
 
   useEffect(() => {
     const unsub = device.subscribe((l, t) => {
-      setLights(l);
-      setTelem(t);
-      const nowConnected = device.connected;
-      setConnected(nowConnected);
-      setPeerDisplayName(device.peerDisplayName);
+      unstable_batchedUpdates(() => {
+        setLights(l);
+        setTelem(t);
+        const nowConnected = device.connected;
+        setConnected(nowConnected);
+        setPeerDisplayName(device.peerDisplayName);
 
-      if (nowConnected) {
-        sumMsRef.current += t.speedMs;
-        countRef.current += 1;
-        if (t.speedMs > maxSpeedMsRef.current) {
-          maxSpeedMsRef.current = t.speedMs;
-        }
-        if (t.speedMs < NEAR_ZERO_MS) {
-          if (zeroSinceRef.current === null) {
-            zeroSinceRef.current = Date.now();
+        if (nowConnected) {
+          sumMsRef.current += t.speedMs;
+          countRef.current += 1;
+          if (t.speedMs > maxSpeedMsRef.current) {
+            maxSpeedMsRef.current = t.speedMs;
           }
-        } else {
-          zeroSinceRef.current = null;
+          if (t.speedMs < NEAR_ZERO_MS) {
+            if (zeroSinceRef.current === null) {
+              zeroSinceRef.current = Date.now();
+            }
+          } else {
+            zeroSinceRef.current = null;
+          }
         }
-      }
+      });
     });
     return unsub;
   }, [device]);
@@ -148,6 +151,10 @@ export function useFender(transport?: FenderDeviceTransport) {
     device.disconnect();
     setConnected(false);
     setPeerDisplayName(device.peerDisplayName);
+  }, [device]);
+
+  const stopScan = useCallback(() => {
+    device.stopScan();
   }, [device]);
 
   const sendCommand = useCallback(
@@ -226,6 +233,7 @@ export function useFender(transport?: FenderDeviceTransport) {
     peerDisplayName,
     connect,
     disconnect,
+    stopScan,
     lights,
     telem,
     sendCommand,
